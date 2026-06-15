@@ -404,4 +404,4 @@ FodyWeavers.xsd
 Migrations/
 
 # Db filese
-*.db
+*.db*
