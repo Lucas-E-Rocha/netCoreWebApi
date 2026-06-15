@@ -7,7 +7,6 @@ var connectionString = builder.Configuration.GetConnectionString("AppDbContext")
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
