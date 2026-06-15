@@ -1,29 +1,33 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using netCoreWebApi.Dtos;
 using netCoreWebApi.Models;
+using netCoreWebApi.Services.Exceptions;
+using netCoreWebApi.Services.Interfaces;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 [Route("api/[controller]")]
 [ApiController]
 public class ContactsController : ControllerBase
 {
-    private readonly AppDbContext _context;
-    public ContactsController(AppDbContext context)
+    private readonly IContactService _contactService;
+    public ContactsController(IContactService contactService)
     {
-        _context = context;
+        _contactService = contactService;
     }
 
     // GET: api/Contact
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Contact>>> GetContact()
     {
-        return await _context.Contact.ToListAsync();
+        return await _contactService.GetAllAsync();
     }
 
     // GET: api/Contact/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Contact>> GetContact(int id)
     {
-        var contact = await _context.Contact.FindAsync(id);
+        var contact = await _contactService.GetByIdAsync(id);
 
         if (contact == null)
         {
@@ -36,30 +40,18 @@ public class ContactsController : ControllerBase
     // PUT: api/Contact/5
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutContact(int? id, Contact contact)
+    public async Task<IActionResult> PutContact(int id, ContactDto dto)
     {
-        if (id != contact.Id)
-        {
-            return BadRequest();
-        }
+        var contact = await _contactService.GetByIdAsync(id);
 
-        _context.Entry(contact).State = EntityState.Modified;
+        if (contact == null)
+            return NotFound();
 
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!ContactExists(id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
+        contact.Name = dto.Name;
+        contact.Email = dto.Email;
+        contact.Phone = dto.Phone;
+
+        await _contactService.UpdateAsync(contact);
 
         return NoContent();
     }
@@ -67,32 +59,30 @@ public class ContactsController : ControllerBase
     // POST: api/Contact
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPost]
-    public async Task<ActionResult<Contact>> PostContact(Contact contact)
+    public async Task<ActionResult<Contact>> PostContact(ContactDto dto)
     {
-        _context.Contact.Add(contact);
-        await _context.SaveChangesAsync();
+        var contact = new Contact
+        {
+            Name = dto.Name,
+            Email = dto.Email,
+            Phone = dto.Phone
+        };
 
-        return CreatedAtAction("GetContact", new { id = contact.Id }, contact);
+        var createdContact = await _contactService.CreateAsync(contact);
+
+        return CreatedAtAction(nameof(GetContact), new { id = createdContact.Id }, createdContact);
     }
 
     // DELETE: api/Contact/5
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteContact(int? id)
+    public async Task<IActionResult> DeleteContact(int id)
     {
-        var contact = await _context.Contact.FindAsync(id);
+        var contact = await _contactService.GetByIdAsync(id);
+
         if (contact == null)
-        {
             return NotFound();
-        }
 
-        _context.Contact.Remove(contact);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    private bool ContactExists(int? id)
-    {
-        return _context.Contact.Any(e => e.Id == id);
+        await _contactService.DeleteAsync(contact);
+            return NoContent();
     }
 }
